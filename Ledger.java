@@ -47,9 +47,9 @@ public class Ledger {
     }
 
     /** 
-     * Update the balance of {@code recipient}
+     * Adds coin (which might be negative) to balance for {@code recipient}
      */
-    public void updateBalance(String recipient, int coin) {
+    public void addToBalance(String recipient, int coin) {
 	H.replace(recipient, getBalance(recipient) + coin);
     }
 
@@ -60,7 +60,7 @@ public class Ledger {
 	// This first part checks if it is a create transaction
 	if (tx.getSender() == null) {
 	    if (exists(tx.getRecipient())) {
-		updateBalance(tx.getRecipient(), tx.getCoin());
+		addToBalance(tx.getRecipient(), tx.getCoin());
 	    }
 	    else 
 		addAccount(tx.getRecipient(), tx.getCoin());
@@ -68,8 +68,8 @@ public class Ledger {
 
 	// This second part deals with the transfer transaction
 	else {
-      	    updateBalance(tx.getSender(), -tx.getCoin());
-	    updateBalance(tx.getRecipient(), tx.getCoin());
+      	    addToBalance(tx.getSender(), -tx.getCoin());
+	    addToBalance(tx.getRecipient(), tx.getCoin());
 	}
     }
 

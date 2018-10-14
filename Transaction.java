@@ -22,15 +22,15 @@ public class Transaction {
 	this.coin = coin;
     }
 
-    public void addCoin(int newCoin) {
+    public void setCoin(int newCoin) {
 	coin = newCoin;
     }
 
-    public void addSender(String sender) {
+    public void setSender(String sender) {
 	from = sender;
     }
 
-    public void addRecipient(String recipient) {
+    public void setRecipient(String recipient) {
 	to = recipient;
     }
 
