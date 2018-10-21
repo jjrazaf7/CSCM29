@@ -1,0 +1,117 @@
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.security.PublicKey;
+
+public class TxProcessor {
+
+    private Ledger ledger;
+    
+    /** Creates a ledger whose current history is {@code ledger}. */
+    public TxProcessor(Ledger ledger) {
+	this.ledger = new Ledger(ledger);
+    }
+
+    /** 
+     * This method checks if transaction {@code tx} is valid or not.
+     * There are four cases to consider in order to check for the validity of {@code tx}: 
+     * (1) {@code tx} is a creation transaction
+     * (2) {@code tx} is a 1-1 transfer transaction
+     * (3) {@code tx} is a 2-1 transfer transaction 
+     * (4) {@code tx} is a 1-2 transfer transaction
+     *
+     * A creation transaction is valid if the coin credited to the recipient in the transaction is non-negative
+     * A 1-1 transfer transaction is valid if the following conditions hold: 
+     * (1) all coins are non-negative and equal
+     * (2) the public key in the input has enough balance 
+     * (3) the signature  is valid for the message (obtained using getRawDataToSign) under the public key in the input
+     *
+     * A 1-2 transfer transaction is valid if the following conditions hold: 
+     * (1) all coins involved in the transaction are non-negative
+     * (2) the sum of the coins in the outputs is equal to the coin in the input
+     * (3) the public key in the input has enough balance
+     * (4) the signature  is valid for the message (obtained using getRawDataToSign) under the public key in the input
+     * 
+     * A 2-1 transfer transaction is valid if the following conditions hold: 
+     * (1) all coins involved in the transaction are non-negative
+     * (2) the sum of the coins in the inputs is equal to the coin in the output
+     * (3) the public keys in the input have enough balance 
+     * (4) the signatures are valid for the respective messages under the respective public keys in the input
+     *
+     * @return true if all the above  conditions are met, otherwise, false.
+     */
+    public boolean validTx(Transaction tx) {
+	// Case 1: creation transaction
+	if (tx.getInputs().isEmpty()) {
+	    int coinOut = tx.getOutputs().get(0).getCoin();
+
+	    if (coinOut >= 0) {
+		return true;
+	    }
+	}
+	
+	// Case 2: 1-1 transfer transaction
+	if (tx.getInputs().size() == 1 && tx.getOutputs().size() == 1) {
+	    PublicKey sender = tx.getInputs().get(0).getSender();
+	    int coinIn = tx.getInputs().get(0).getCoin();
+	    int coinOut  = tx.getOutputs().get(0).getCoin();
+	    
+	    if (coinIn >= 0 &&
+		ledger.getBalance(sender) >= coinIn &&
+		coinIn == coinOut &&
+		Crypto.verifySignature(sender, tx.getRawDataToSign(0), tx.getInputs().get(0).getSignature())) {
+		return true;
+	    }
+	}
+
+	// Case 3: 2-1 transfer transaction
+	if (tx.getInputs().size() == 2 && tx.getOutputs().size() == 1) {
+	    PublicKey sender1 = tx.getInputs().get(0).getSender();
+	    int coinIn1 = tx.getInputs().get(0).getCoin();
+	    PublicKey sender2 = tx.getInputs().get(1).getSender();
+	    int coinIn2 = tx.getInputs().get(1).getCoin();
+	    int coinOut = tx.getOutputs().get(0).getCoin();
+
+	    if (coinIn1 >= 0 && coinIn2 >= 0 &&
+		ledger.getBalance(sender1) >= coinIn1 &&
+		ledger.getBalance(sender2) >= coinIn2 &&
+		coinOut == (coinIn1 + coinIn2) &&
+		Crypto.verifySignature(sender1, tx.getRawDataToSign(0), tx.getInputs().get(0).getSignature()) &&
+		Crypto.verifySignature(sender2, tx.getRawDataToSign(1), tx.getInputs().get(1).getSignature())) {
+		return true;
+	    }
+	}
+
+	// Case 4: 1-2 transfer transaction
+	if (tx.getInputs().size() == 1 && tx.getOutputs().size() == 2) {
+	    PublicKey sender = tx.getInputs().get(0).getSender();
+	    int coinIn = tx.getInputs().get(0).getCoin();
+	    int coinOut1 = tx.getOutputs().get(0).getCoin();
+	    int coinOut2 = tx.getOutputs().get(1).getCoin();
+	    
+	    if (coinOut1 >= 0 && coinOut2 >= 0 &&
+		ledger.getBalance(sender) >= coinIn &&
+		coinIn == (coinOut1 + coinOut2) &&
+		Crypto.verifySignature(sender, tx.getRawDataToSign(0), tx.getInputs().get(0).getSignature())) {
+		return true;
+	    }
+	}
+
+	return false;
+    }
+    
+    /**
+     * Handles each epoch by receiving an unordered array of proposed transactions,
+     * checking each transaction for validity,
+     * updating the the ledger as appropriate,
+     * and returning the updated ledger. 
+     */
+    public Ledger processTxs(Transaction[] possibleTxs) {
+
+	for (Transaction tx : possibleTxs) {
+	    if (validTx(tx)) 
+		ledger.update(tx);
+	}
+
+	return ledger;
+    }
+}
