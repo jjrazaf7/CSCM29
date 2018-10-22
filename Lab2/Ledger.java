@@ -60,7 +60,7 @@ public class Ledger {
      */
     public void update(Transaction tx) {
 	// Case 1: creation transaction
-	if (tx.getInputs().isEmpty()) {
+	if (tx.getInputs().isEmpty() && tx.getOutputs().size() == 1) {
 	    // checks if recipient already exists
 	    PublicKey recipient = tx.getOutputs().get(0).getRecipient();
 	    int coin = tx.getOutputs().get(0).getCoin();
